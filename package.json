@@ -1,0 +1,25 @@
+{
+  "name": "backend_cinomy",
+  "version": "1.0.0",
+  "description": "Backend Cinomy",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jegmdev/backend_cinomy.git"
+  },
+  "author": "jegmdev",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jegmdev/backend_cinomy/issues"
+  },
+  "homepage": "https://github.com/jegmdev/backend_cinomy#readme",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mysql": "^2.18.1"
+  }
+}
