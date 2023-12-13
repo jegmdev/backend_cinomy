@@ -2,18 +2,36 @@ const express = require('express');
 const mysql = require('mysql');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:3000', // Permitir solicitudes solo desde este origen
-  credentials: true, // Habilitar el envío de cookies de autenticación
+  origin: 'http://localhost:3000',
+  credentials: true,
 }));
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send('Internal Server Error');
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Configuración de la base de datos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage: storage });
+
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
@@ -42,7 +60,7 @@ app.post('/api/registro', (req, res) => {
     documentoIdentidad
   } = req.body;
 
-  const query = 'INSERT INTO cinema.usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+  const query = 'INSERT INTO cinema.usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documentoIdentidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
 
   db.query(query, [correo, contraseña, nombre, apellidos, tipo, direccion, celular, documentoIdentidad], (err, result) => {
     if (err) {
@@ -65,7 +83,71 @@ app.get('/api/registro', (_req, res) => {
   });
 });
 
-// Ruta para obtener los registros de usuarios con su tipo
+app.post('/api/estrenos', upload.single('promotionalImage'), (req, res) => {
+  try {
+    console.log('Entró en /api/estrenos');
+    const {
+      titulo,
+      genero,
+      sinopsis,
+      promotionalImage,
+      formato,
+      duracion,
+      valor_boleta
+    } = req.body;
+
+    // Asegúrate de que el archivo se haya cargado correctamente antes de acceder a sus propiedades
+    if (req.file && req.file.filename) {
+      const promotionalImage = req.file.filename;
+      const rutaArchivo = req.file.path;
+
+      // Resto del código...
+      const query = 'INSERT INTO cinema.estrenos (titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta) VALUES (?, ?, ?, ?, ?, ?, ?)';
+
+      db.query(query, [titulo, genero, sinopsis, promotionalImage, formato, duracion, valor_boleta], (err, result) => {
+        if (err) {
+          console.error(err);
+          res.status(500).json({ message: 'Error al agregar la película' });
+        } else {
+          res.status(200).json({ message: 'Película agregada correctamente' });
+
+          // Eliminar el archivo después de leer su contenido
+          const imagenBinaria = fs.readFileSync(rutaArchivo);
+          fs.unlinkSync(rutaArchivo);
+        }
+      });
+    } else {
+      res.status(400).json({ message: 'Archivo no encontrado o inválido' });
+    }
+  } catch (error) {
+    console.error('Error al subir la información:', error);
+    res.status(500).send('Error interno del servidor');
+  }
+});
+
+app.get('/api/estrenos', (_req, res) => {
+  db.query('SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM cinema.estrenos', (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al obtener los registros' });
+    } else {
+      // Iterar sobre los resultados y almacenar el tipo de usuario en una variable
+      const usuariosConTipo = results.map((pelicula) => ({
+        id_pelicula: pelicula.id,
+        titulo: pelicula.titulo,
+        genero: pelicula.genero,
+        sinopsis: pelicula.sinopsis,
+        imagen_promocional: pelicula.imagen_promocional,
+        formato: pelicula.formato,
+        duracion: pelicula.duracion,
+        valor_boleta: pelicula.valor_boleta
+      }));
+
+      res.status(200).json(usuariosConTipo);
+    }
+  });
+});
+
 app.get('/api/registro/usuarios', (_req, res) => {
   db.query('SELECT id, correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad FROM cinema.usuarios', (err, results) => {
     if (err) {
