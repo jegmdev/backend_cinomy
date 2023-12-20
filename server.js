@@ -192,3 +192,18 @@ app.post('/api/login', (req, res) => {
     }
   });
 });
+
+app.post('/api/reservar', (req, res) => {
+  const { idPelicula, fecha, hora, sala, asientos, total } = req.body;
+
+  const query = 'INSERT INTO cinema.reservas (peliculaId, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?)';
+
+  db.query(query, [idPelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al agregar la reserva' });
+    } else {
+      res.status(200).json({ message: 'Reserva agregada correctamente' });
+    }
+  });
+});
