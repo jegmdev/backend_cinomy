@@ -5,6 +5,11 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require("bcrypt");
+const { generateAccessToken, generateRefreshToken } = require("./auth/generateTokens");
+const getUserInfo = require("./lib/getUserInfo");
+const Token = require("./schema/Token");
+const { jsonResponse } = require('./lib/jsonResponse');
 
 const app = express();
 
@@ -48,29 +53,64 @@ app.listen(3001, () => {
   console.log('Server is running on port 3001');
 });
 
-app.post('/api/registro', (req, res) => {
-  const {
-    correo,
-    contraseña,
-    nombre,
-    apellidos,
-    tipo,
-    direccion,
-    celular,
-    documentoIdentidad
-  } = req.body;
+app.post("/api/registro", async (req, res) => {
+  const { correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad } = req.body;
 
-  const query = 'INSERT INTO cinema.usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documentoIdentidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+  try {
+    // Verificar si el usuario ya existe
+    const checkUserQuery = "SELECT * FROM cinema.usuarios WHERE correo = ?";
+    db.query(checkUserQuery, [correo], async (checkUserErr, checkUserResults) => {
+      if (checkUserErr) {
+        console.error("Error checking user existence:", checkUserErr);
+        return res.status(500).json(
+          jsonResponse(500, {
+            error: "Error checking user existence",
+          })
+        );
+      }
 
-  db.query(query, [correo, contraseña, nombre, apellidos, tipo, direccion, celular, documentoIdentidad], (err, result) => {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error al agregar el registro' });
-    } else {
-      res.status(200).json({ message: 'Registro agregado correctamente' });
-    }
-  });
+      if (checkUserResults.length > 0) {
+        return res.status(409).json(
+          jsonResponse(409, {
+            error: "User already exists",
+          })
+        );
+      }
+
+      // Crear un nuevo usuario
+      const hashedPassword = await bcrypt.hash(contraseña, 10);
+      const insertUserQuery = "INSERT INTO usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+      db.query(
+        insertUserQuery,
+        [correo, hashedPassword, nombre, apellidos, tipo, direccion, celular, documento_identidad],
+        (insertUserErr) => {
+          if (insertUserErr) {
+            console.error("Error creating user:", insertUserErr);
+            return res.status(500).json(
+              jsonResponse(500, {
+                error: "Error creating user",
+              })
+            );
+          }
+
+          res.status(200).json(
+            jsonResponse(200, {
+              message: "User created successfully",
+            })
+          );
+        }
+      );
+    });
+  } catch (err) {
+    console.error("Error creating user:", err);
+    return res.status(500).json(
+      jsonResponse(500, {
+        error: "Error creating user",
+      })
+    );
+  }
 });
+
 
 app.get('/api/registro', (_req, res) => {
   db.query('SELECT * FROM usuarios', (err, result) => {
@@ -171,39 +211,110 @@ app.get('/api/registro/usuarios', (_req, res) => {
   });
 });
 
-app.post('/api/login', (req, res) => {
+app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
 
   // Validar si el usuario está registrado
-  const query = 'SELECT tipo FROM cinema.usuarios WHERE correo = ? AND contraseña = ?';
+  const query = "SELECT * FROM cinema.usuarios WHERE correo = ?";
 
-  db.query(query, [email, password], (err, result) => {
+  db.query(query, [email], async (err, results) => {
     if (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error al realizar la autenticación' });
+      console.error("Error al realizar la autenticación:", err);
+      res.status(500).json({ message: "Error al realizar la autenticación" });
     } else {
-      if (result.length > 0) {
-        const userType = result[0].tipo;
-        res.status(200).json({ message: 'Inicio de sesión exitoso', userType });
+      if (results.length > 0) {
+        const user = results[0];
+
+        // Comparar la contraseña proporcionada con la almacenada en la base de datos
+        const passwordCorrect = await bcrypt.compare(password, user.contraseña);
+
+        if (passwordCorrect) {
+          const accessToken = generateAccessToken(getUserInfo(user));
+          const refreshToken = await generateRefreshToken(getUserInfo(user));
+
+          // Guardar el token de actualización en la base de datos
+          const insertTokenQuery = "INSERT INTO cinema.tokens (token) VALUES (?)";
+          db.query(insertTokenQuery, [refreshToken], (tokenErr) => {
+            if (tokenErr) {
+              console.error("Error al guardar el token de refresco:", tokenErr);
+              res.status(500).json({ message: "Error interno del servidor" });
+            } else {
+              res.status(200).json({
+                message: "Inicio de sesión exitoso",
+                accessToken,
+                refreshToken,
+                user: getUserInfo(user),
+              });
+            }
+          });
+        } else {
+          // Contraseña incorrecta
+          res.status(401).json({ message: "Correo electrónico o contraseña incorrectos" });
+        }
       } else {
         // Usuario no autenticado
-        res.status(401).json({ message: 'Correo electrónico o contraseña incorrectos' });
+        res.status(401).json({ message: "Correo electrónico o contraseña incorrectos" });
       }
     }
   });
 });
 
-app.post('/api/reservar', (req, res) => {
-  const { idPelicula, fecha, hora, sala, asientos, total } = req.body;
+app.post('/api/reservar', async (req, res) => {
+  const { idPelicula, fecha, hora, sala } = req.body;
 
-  const query = 'INSERT INTO cinema.reservas (peliculaId, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?)';
+  const existingReservaQuery = 'SELECT * FROM cinema.reservas WHERE peliculaId = ? AND fecha = ? AND hora = ? AND sala = ?';
+  const existingReserva = await new Promise((resolve) => {
+    db.query(existingReservaQuery, [idPelicula, fecha, hora, sala], (err, result) => {
+      if (err) {
+        console.error(err);
+        resolve(null);
+      } else {
+        resolve(result.length > 0);
+      }
+    });
+  });
 
-  db.query(query, [idPelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {
+  if (existingReserva) {
+    return res.status(400).json({ message: 'Ya existe una reserva para esta película, fecha, hora y sala.' });
+  }
+
+  const { pelicula, asientos, total } = req.body;
+  const insertQuery = 'INSERT INTO cinema.reservas (peliculaId, pelicula, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?, ?)';
+
+  db.query(insertQuery, [idPelicula, pelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {
     if (err) {
       console.error(err);
       res.status(500).json({ message: 'Error al agregar la reserva' });
     } else {
       res.status(200).json({ message: 'Reserva agregada correctamente' });
+    }
+  });
+});
+
+app.get('/api/reservas', (req, res) => {
+  const { idPelicula, fecha, hora, sala } = req.query;
+
+  const query = 'SELECT * FROM cinema.reservas WHERE peliculaId = ? AND fecha = ? AND hora = ? AND sala = ?';
+
+  db.query(query, [idPelicula, fecha, hora, sala], (err, result) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al obtener las reservas' });
+    } else {
+      res.status(200).json(result);
+    }
+  });
+});
+
+app.get('/api/listareservas', (req, res) => {
+  const query = 'SELECT * FROM cinema.reservas';
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al obtener las reservas' });
+    } else {
+      res.status(200).json(results);
     }
   });
 });

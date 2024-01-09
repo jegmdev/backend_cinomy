@@ -1,25 +1,47 @@
-const router = require("express").Router();
+const express = require("express");
+const User = require("../schema/user");
 const { jsonResponse } = require("../lib/jsonResponse");
+const getUserInfo = require("../lib/getUserInfo");
+const router = express.Router();
 
-router.post("/", (req, res) => {
+router.post("/", async function (req, res) {
   const { email, password } = req.body;
-  
-  if (!!!email || !!!password) {
-    return res.status(400).json({
-      message: "Email and password are required",
-    });
+
+  try {
+    const user = await User.findOne({ email: email });
+
+    if (user) {
+      const passwordCorrect = await user.comparePassword(password);
+
+      if (passwordCorrect) {
+        const accessToken = user.createAccessToken();
+        const refreshToken = await user.createRefreshToken();
+
+        return res.json(
+          jsonResponse(200, {
+            accessToken,
+            refreshToken,
+            user: getUserInfo(user),
+          })
+        );
+      } else {
+        return res.status(400).json(
+          jsonResponse(400, {
+            error: "Username and/or password incorrect",
+          })
+        );
+      }
+    } else {
+      return res.status(404).json(
+        jsonResponse(404, {
+          error: "Username does not exist",
+        })
+      );
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json(jsonResponse(500, { error: "Internal server error" }));
   }
-
-  //Autenticar usuario
-
-  const accessToken = "access_token";
-  const refreshToken = "refresh_token";
-  const user = {
-    id:'1',
-    name: 'John',
-    username: 'XXXXX'
-  };   
-  res.status(200).json(jsonResponse(200, {user, accessToken, refreshToken}))
 });
 
 module.exports = router;
