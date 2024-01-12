@@ -8,8 +8,8 @@ const fs = require('fs');
 const bcrypt = require("bcrypt");
 const { generateAccessToken, generateRefreshToken } = require("./auth/generateTokens");
 const getUserInfo = require("./lib/getUserInfo");
-const Token = require("./schema/Token");
 const { jsonResponse } = require('./lib/jsonResponse');
+const authenticate = require("./auth/authenticate");
 
 const app = express();
 
@@ -52,6 +52,10 @@ db.connect((err) => {
 app.listen(3001, () => {
   console.log('Server is running on port 3001');
 });
+
+app.use('/api/refreshToken', require('./routes/refreshToken'));
+app.use('/api/user', authenticate, require('./routes/user'));
+app.use('/api/reservas', authenticate, require('./routes/reservas'));
 
 app.post("/api/registro", async (req, res) => {
   const { correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad } = req.body;
@@ -260,25 +264,8 @@ app.post("/api/login", (req, res) => {
 });
 
 app.post('/api/reservar', async (req, res) => {
-  const { idPelicula, fecha, hora, sala } = req.body;
+  const { idPelicula, pelicula, fecha, hora, sala, asientos, total } = req.body;
 
-  const existingReservaQuery = 'SELECT * FROM cinema.reservas WHERE peliculaId = ? AND fecha = ? AND hora = ? AND sala = ?';
-  const existingReserva = await new Promise((resolve) => {
-    db.query(existingReservaQuery, [idPelicula, fecha, hora, sala], (err, result) => {
-      if (err) {
-        console.error(err);
-        resolve(null);
-      } else {
-        resolve(result.length > 0);
-      }
-    });
-  });
-
-  if (existingReserva) {
-    return res.status(400).json({ message: 'Ya existe una reserva para esta película, fecha, hora y sala.' });
-  }
-
-  const { pelicula, asientos, total } = req.body;
   const insertQuery = 'INSERT INTO cinema.reservas (peliculaId, pelicula, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?, ?)';
 
   db.query(insertQuery, [idPelicula, pelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {

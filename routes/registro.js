@@ -7,36 +7,49 @@ router.post("/", async (req, res) => {
 
   try {
     // Verificar si el usuario ya existe
-    const userExists = await User.usernameExists(correo);
+    const checkUserQuery = "SELECT * FROM cinema.usuarios WHERE correo = ?";
+    db.query(checkUserQuery, [correo], async (checkUserErr, checkUserResults) => {
+      if (checkUserErr) {
+        console.error("Error checking user existence:", checkUserErr);
+        return res.status(500).json(
+          jsonResponse(500, {
+            error: "Error checking user existence",
+          })
+        );
+      }
 
-    if (userExists) {
-      return res.status(409).json(
-        jsonResponse(409, {
-          error: "User already exists",
-        })
+      if (checkUserResults.length > 0) {
+        return res.status(409).json(
+          jsonResponse(409, {
+            error: "User already exists",
+          })
+        );
+      }
+
+      // Crear un nuevo usuario
+      const hashedPassword = await bcrypt.hash(contraseña, 10);
+      const insertUserQuery = "INSERT INTO usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+      db.query(
+        insertUserQuery,
+        [correo, hashedPassword, nombre, apellidos, tipo, direccion, celular, documento_identidad],
+        (insertUserErr) => {
+          if (insertUserErr) {
+            console.error("Error creating user:", insertUserErr);
+            return res.status(500).json(
+              jsonResponse(500, {
+                error: "Error creating user",
+              })
+            );
+          }
+
+          res.status(200).json(
+            jsonResponse(200, {
+              message: "User created successfully",
+            })
+          );
+        }
       );
-    }
-
-    // Crear un nuevo usuario
-    const newUser = new User({
-      correo,
-      contraseña,
-      nombre,
-      apellidos,
-      tipo,
-      direccion,
-      celular,
-      documento_identidad,
     });
-
-    // Guardar el nuevo usuario en la base de datos
-    await newUser.save();
-
-    res.status(200).json(
-      jsonResponse(200, {
-        message: "User created successfully",
-      })
-    );
   } catch (err) {
     console.error("Error creating user:", err);
     return res.status(500).json(
