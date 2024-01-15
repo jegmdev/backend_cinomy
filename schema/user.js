@@ -5,7 +5,7 @@ const {
   generateRefreshToken,
 } = require("../auth/generateTokens");
 const getUserInfo = require("../lib/getUserInfo");
-const Token = require("../schema/Token");
+const Token = require("../schema/token");
 
 const UserSchema = new mongoose.Schema({
   // Cambié `Object` a `mongoose.Schema.Types.ObjectId` para representar correctamente un ID de MongoDB
