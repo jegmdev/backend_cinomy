@@ -117,28 +117,28 @@ app.get('/api/registro', (_req, res) => {
   });
 });
 
-app.post('/api/estrenos', upload.single('promotionalImage'), async (req, res) => {
-  try {
-    console.log('Entró en /api/estrenos');
-    const { titulo, genero, sinopsis, formato, duracion, valor_boleta } = req.body;
+app.post("/api/estrenos", async (req, res) => {
+  const {
+    titulo,
+    genero,
+    sinopsis,
+    imagen_promocional,
+    formato,
+    duracion,
+    valor_boleta,
+  } = req.body;
 
-    const promotionalImage = req.file ? req.file.buffer : null;  // Guardar el BLOB directamente
-    console.log('Imagen promocional recibida');
+  const query =
+    "INSERT INTO cinema.estrenos (titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-    const query = 'INSERT INTO cinema.estrenos (titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta) VALUES (?, ?, ?, ?, ?, ?, ?)';
-
-    db.query(query, [titulo, genero, sinopsis, promotionalImage, formato, duracion, valor_boleta], (err, result) => {
-      if (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error al agregar la película' });
-      } else {
-        res.status(200).json({ message: 'Película agregada correctamente' });
-      }
-    });
-  } catch (error) {
-    console.error('Error al subir la información:', error);
-    res.status(500).send('Error interno del servidor');
-  }
+  db.query(query, [titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta], (err, results) => {
+    if (err) {
+      console.error("Error al insertar película:", err);
+      res.status(500).json({ message: "Error interno del servidor" });
+    } else {
+      res.status(200).json({ message: "Película agregada correctamente" });
+    }
+  });
 });
 
 app.get('/api/estrenos', (_req, res) => {
@@ -165,6 +165,52 @@ app.get('/api/estrenos', (_req, res) => {
   });
 });
 
+app.put('/api/estrenos/:id', (req, res) => {
+  const { id } = req.params;
+  const {
+    titulo,
+    genero,
+    sinopsis,
+    imagen_promocional,
+    formato,
+    duracion,
+    valor_boleta,
+  } = req.body;
+
+  const updateQuery = `
+    UPDATE cinema.estrenos
+    SET
+      titulo = ?,
+      genero = ?,
+      sinopsis = ?,
+      imagen_promocional = ?,
+      formato = ?,
+      duracion = ?,
+      valor_boleta = ?
+    WHERE id = ?`;
+
+  const values = [
+    titulo,
+    genero,
+    sinopsis,
+    imagen_promocional,
+    formato,
+    duracion,
+    valor_boleta,
+    id,
+  ];
+
+  db.query(updateQuery, values, (err, result) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al editar la película' });
+    } else {
+      res.status(200).json({ message: 'Película editada correctamente' });
+    }
+  });
+});
+
+
 app.get('/api/registro/usuarios', (_req, res) => {
   db.query('SELECT id, correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad FROM cinema.usuarios', (err, results) => {
     if (err) {
@@ -184,6 +230,21 @@ app.get('/api/registro/usuarios', (_req, res) => {
       }));
 
       res.status(200).json(usuariosConTipo);
+    }
+  });
+});
+
+app.delete('/api/estrenos/:id', (req, res) => {
+  const peliculaId = req.params.id;
+
+  const deleteQuery = 'DELETE FROM cinema.estrenos WHERE id = ?';
+
+  db.query(deleteQuery, [peliculaId], (err, result) => {
+    if (err) {
+      console.error('Error al eliminar la película:', err);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    } else {
+      res.status(200).json({ message: 'Película eliminada correctamente' });
     }
   });
 });
