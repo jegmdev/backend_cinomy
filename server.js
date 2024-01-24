@@ -141,6 +141,35 @@ app.post("/api/estrenos", async (req, res) => {
   });
 });
 
+app.get('/api/estrenos/:id', (req, res) => {
+  const peliculaId = req.params.id;
+  const query = 'SELECT * FROM cinema.estrenos WHERE id = ?';
+
+  db.query(query, [peliculaId], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al obtener los detalles de la película' });
+    } else {
+      if (results.length > 0) {
+        const pelicula = results[0];
+        const movieDetails = {
+          id: pelicula.id,
+          titulo: pelicula.titulo,
+          genero: pelicula.genero,
+          sinopsis: pelicula.sinopsis,
+          imagen_promocional: pelicula.imagen_promocional,
+          formato: pelicula.formato,
+          duracion: pelicula.duracion,
+          valor_boleta: pelicula.valor_boleta,
+        };
+        res.status(200).json(movieDetails);
+      } else {
+        res.status(404).json({ message: 'No se encontró la película con el ID proporcionado' });
+      }
+    }
+  });
+});
+
 app.get('/api/estrenos', (_req, res) => {
   const query = 'SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM cinema.estrenos';
 
@@ -209,7 +238,6 @@ app.put('/api/estrenos/:id', (req, res) => {
     }
   });
 });
-
 
 app.get('/api/registro/usuarios', (_req, res) => {
   db.query('SELECT id, correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad FROM cinema.usuarios', (err, results) => {
