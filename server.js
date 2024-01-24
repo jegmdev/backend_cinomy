@@ -9,7 +9,6 @@ const bcrypt = require("bcrypt");
 const { generateAccessToken, generateRefreshToken } = require("./auth/generateTokens");
 const getUserInfo = require("./lib/getUserInfo");
 const { jsonResponse } = require('./lib/jsonResponse');
-const authenticate = require("./auth/authenticate");
 
 const app = express();
 
@@ -26,16 +25,11 @@ app.use((err, req, res, next) => {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.fieldname + '-' + Date.now() + path.extname(file.originalname));
-  },
-});
-
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+
+// Ejemplo en server.js
+app.use('/uploads', express.static('uploads'));
 
 const db = mysql.createConnection({
   host: 'localhost',
@@ -52,10 +46,6 @@ db.connect((err) => {
 app.listen(3001, () => {
   console.log('Server is running on port 3001');
 });
-
-app.use('/api/refreshToken', require('./routes/refreshToken'));
-app.use('/api/user', authenticate, require('./routes/user'));
-app.use('/api/reservas', authenticate, require('./routes/reservas'));
 
 app.post("/api/registro", async (req, res) => {
   const { correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad } = req.body;
@@ -127,42 +117,24 @@ app.get('/api/registro', (_req, res) => {
   });
 });
 
-app.post('/api/estrenos', upload.single('promotionalImage'), (req, res) => {
+app.post('/api/estrenos', upload.single('promotionalImage'), async (req, res) => {
   try {
     console.log('Entró en /api/estrenos');
-    const {
-      titulo,
-      genero,
-      sinopsis,
-      promotionalImage,
-      formato,
-      duracion,
-      valor_boleta
-    } = req.body;
+    const { titulo, genero, sinopsis, formato, duracion, valor_boleta } = req.body;
 
-    // Asegúrate de que el archivo se haya cargado correctamente antes de acceder a sus propiedades
-    if (req.file && req.file.filename) {
-      const promotionalImage = req.file.filename;
-      const rutaArchivo = req.file.path;
+    const promotionalImage = req.file ? req.file.buffer : null;  // Guardar el BLOB directamente
+    console.log('Imagen promocional recibida');
 
-      // Resto del código...
-      const query = 'INSERT INTO cinema.estrenos (titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    const query = 'INSERT INTO cinema.estrenos (titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta) VALUES (?, ?, ?, ?, ?, ?, ?)';
 
-      db.query(query, [titulo, genero, sinopsis, promotionalImage, formato, duracion, valor_boleta], (err, result) => {
-        if (err) {
-          console.error(err);
-          res.status(500).json({ message: 'Error al agregar la película' });
-        } else {
-          res.status(200).json({ message: 'Película agregada correctamente' });
-
-          // Eliminar el archivo después de leer su contenido
-          const imagenBinaria = fs.readFileSync(rutaArchivo);
-          fs.unlinkSync(rutaArchivo);
-        }
-      });
-    } else {
-      res.status(400).json({ message: 'Archivo no encontrado o inválido' });
-    }
+    db.query(query, [titulo, genero, sinopsis, promotionalImage, formato, duracion, valor_boleta], (err, result) => {
+      if (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al agregar la película' });
+      } else {
+        res.status(200).json({ message: 'Película agregada correctamente' });
+      }
+    });
   } catch (error) {
     console.error('Error al subir la información:', error);
     res.status(500).send('Error interno del servidor');
@@ -170,24 +142,25 @@ app.post('/api/estrenos', upload.single('promotionalImage'), (req, res) => {
 });
 
 app.get('/api/estrenos', (_req, res) => {
-  db.query('SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM cinema.estrenos', (err, results) => {
+  const query = 'SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM cinema.estrenos';
+
+  db.query(query, (err, results) => {
     if (err) {
       console.error(err);
-      res.status(500).json({ message: 'Error al obtener los registros' });
+      res.status(500).json({ message: 'Error al obtener los registros de películas' });
     } else {
-      // Iterar sobre los resultados y almacenar el tipo de usuario en una variable
-      const usuariosConTipo = results.map((pelicula) => ({
-        id_pelicula: pelicula.id,
+      const movies = results.map((pelicula) => ({
+        id: pelicula.id,
         titulo: pelicula.titulo,
         genero: pelicula.genero,
         sinopsis: pelicula.sinopsis,
         imagen_promocional: pelicula.imagen_promocional,
         formato: pelicula.formato,
         duracion: pelicula.duracion,
-        valor_boleta: pelicula.valor_boleta
+        valor_boleta: pelicula.valor_boleta,
       }));
 
-      res.status(200).json(usuariosConTipo);
+      res.status(200).json(movies);
     }
   });
 });

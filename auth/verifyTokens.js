@@ -5,7 +5,11 @@ function verifyAccessToken(token) {
 }
 
 function verifyRefreshToken(token) {
-    return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+    if (token) {
+        return jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
+      } else {
+        throw new Error("Token no proporcionado");
+      }
 }
 
 module.exports = {verifyAccessToken, verifyRefreshToken};
