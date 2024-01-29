@@ -170,6 +170,25 @@ app.get('/api/estrenos/:id', (req, res) => {
   });
 });
 
+app.delete('/api/reservas/:id', (req, res) => {
+  const reservaId = req.params.id;
+
+  const deleteQuery = 'DELETE FROM cinema.reservas WHERE id = ?';
+
+  db.query(deleteQuery, [reservaId], (err, result) => {
+    if (err) {
+      console.error('Error al eliminar la reserva:', err);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    } else {
+      if (result.affectedRows > 0) {
+        res.status(200).json({ message: 'Reserva eliminada correctamente' });
+      } else {
+        res.status(404).json({ message: 'Reserva no encontrada' });
+      }
+    }
+  });
+});
+
 app.get('/api/estrenos', (_req, res) => {
   const query = 'SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM cinema.estrenos';
 
