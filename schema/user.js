@@ -8,7 +8,6 @@ const getUserInfo = require("../lib/getUserInfo");
 const Token = require("../schema/token");
 
 const UserSchema = new mongoose.Schema({
-  // Cambié `Object` a `mongoose.Schema.Types.ObjectId` para representar correctamente un ID de MongoDB
   id: { type: mongoose.Schema.Types.ObjectId },
   correo: { type: String, required: true, unique: true },
   contraseña: { type: String, required: true },

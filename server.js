@@ -345,11 +345,11 @@ app.post("/api/login", (req, res) => {
 });
 
 app.post('/api/reservar', async (req, res) => {
-  const { idPelicula, pelicula, fecha, hora, sala, asientos, total } = req.body;
+  const { usuarioId, idPelicula, pelicula, fecha, hora, sala, asientos, total } = req.body;
 
-  const insertQuery = 'INSERT INTO cinema.reservas (peliculaId, pelicula, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?, ?)';
+  const insertQuery = 'INSERT INTO cinema.reservas (usuarioId, peliculaId, pelicula, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
 
-  db.query(insertQuery, [idPelicula, pelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {
+  db.query(insertQuery, [usuarioId, idPelicula, pelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {
     if (err) {
       console.error(err);
       res.status(500).json({ message: 'Error al agregar la reserva' });
