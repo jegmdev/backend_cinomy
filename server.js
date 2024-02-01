@@ -48,7 +48,7 @@ app.listen(3001, () => {
 });
 
 app.post("/api/registro", async (req, res) => {
-  const { correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad } = req.body;
+  const { correo, contraseña, nombre, apellidos, direccion, celular, documento_identidad } = req.body;
 
   try {
     // Verificar si el usuario ya existe
@@ -73,10 +73,10 @@ app.post("/api/registro", async (req, res) => {
 
       // Crear un nuevo usuario
       const hashedPassword = await bcrypt.hash(contraseña, 10);
-      const insertUserQuery = "INSERT INTO usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+      const insertUserQuery = "INSERT INTO usuarios (correo, contraseña, nombre, apellidos, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?)";
       db.query(
         insertUserQuery,
-        [correo, hashedPassword, nombre, apellidos, tipo, direccion, celular, documento_identidad],
+        [correo, hashedPassword, nombre, apellidos, direccion, celular, documento_identidad],
         (insertUserErr) => {
           if (insertUserErr) {
             console.error("Error creating user:", insertUserErr);
@@ -189,6 +189,52 @@ app.delete('/api/reservas/:id', (req, res) => {
   });
 });
 
+app.put('/api/reservas/:id/eliminar-sillas', (req, res) => {
+  const reservaId = req.params.id;
+  const { sillasAEliminar } = req.body;
+
+  // Verificar que sillasAEliminar es un array válido antes de procesarlo
+  if (!Array.isArray(sillasAEliminar) || sillasAEliminar.length === 0) {
+    return res.status(400).json({ message: 'La solicitud debe incluir un array válido de sillas a eliminar' });
+  }
+
+  // Obtener la reserva actual
+  const getReservaQuery = 'SELECT asientos FROM cinema.reservas WHERE id = ?';
+
+  db.query(getReservaQuery, [reservaId], (err, result) => {
+    if (err) {
+      console.error('Error al obtener la reserva:', err);
+      return res.status(500).json({ message: 'Error interno del servidor' });
+    }
+
+    if (result.length === 0) {
+      return res.status(404).json({ message: 'Reserva no encontrada' });
+    }
+
+    const reserva = result[0];
+    const asientosActuales = JSON.parse(reserva.asientos);
+
+    // Filtrar los asientos actuales, eliminando aquellos que estén en sillasAEliminar
+    const nuevosAsientos = asientosActuales.filter((asiento) => !sillasAEliminar.includes(asiento));
+
+    // Actualizar la reserva con los nuevos asientos
+    const updateQuery = 'UPDATE cinema.reservas SET asientos = ? WHERE id = ?';
+
+    db.query(updateQuery, [JSON.stringify(nuevosAsientos), reservaId], (updateErr, updateResult) => {
+      if (updateErr) {
+        console.error('Error al actualizar la reserva con nuevas sillas:', updateErr);
+        res.status(500).json({ message: 'Error interno del servidor' });
+      } else {
+        if (updateResult.affectedRows > 0) {
+          res.status(200).json({ message: 'Sillas eliminadas de la reserva correctamente' });
+        } else {
+          res.status(404).json({ message: 'Reserva no encontrada' });
+        }
+      }
+    });
+  });
+});
+
 app.get('/api/estrenos', (_req, res) => {
   const query = 'SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM cinema.estrenos';
 
@@ -280,6 +326,27 @@ app.get('/api/registro/usuarios', (_req, res) => {
     }
   });
 });
+
+
+app.get('/api/usuarios/:id', (req, res) => {
+  const usuarioId = req.params.id; 
+  
+  // Consultar la base de datos para obtener la información del usuario por su ID
+  db.query('SELECT nombre, apellido FROM usuarios WHERE id = ?', [usuarioId], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ message: 'Error al obtener la información del usuario' });
+    } else {
+      if (results.length > 0) {
+        const usuario = results[0]; // Obtener el primer resultado (debería ser único)
+        res.status(200).json(usuario); // Enviar la información del usuario como respuesta
+      } else {
+        res.status(404).json({ message: 'Usuario no encontrado' });
+      }
+    }
+  });
+});
+
 
 app.delete('/api/estrenos/:id', (req, res) => {
   const peliculaId = req.params.id;
