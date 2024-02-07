@@ -48,7 +48,7 @@ app.listen(3001, () => {
 });
 
 app.post("/api/registro", async (req, res) => {
-  const { correo, contraseña, nombre, apellidos, direccion, celular, documento_identidad } = req.body;
+  const { correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad } = req.body;
 
   try {
     // Verificar si el usuario ya existe
@@ -73,10 +73,10 @@ app.post("/api/registro", async (req, res) => {
 
       // Crear un nuevo usuario
       const hashedPassword = await bcrypt.hash(contraseña, 10);
-      const insertUserQuery = "INSERT INTO usuarios (correo, contraseña, nombre, apellidos, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?)";
+      const insertUserQuery = "INSERT INTO usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
       db.query(
         insertUserQuery,
-        [correo, hashedPassword, nombre, apellidos, direccion, celular, documento_identidad],
+        [correo, hashedPassword, nombre, apellidos, tipo, direccion, celular, documento_identidad],
         (insertUserErr) => {
           if (insertUserErr) {
             console.error("Error creating user:", insertUserErr);
@@ -104,7 +104,6 @@ app.post("/api/registro", async (req, res) => {
     );
   }
 });
-
 
 app.get('/api/registro', (_req, res) => {
   db.query('SELECT * FROM usuarios', (err, result) => {
