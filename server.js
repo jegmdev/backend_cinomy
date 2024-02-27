@@ -57,7 +57,6 @@ app.post("/api/registro", async (req, res) => {
       }
 
       if (checkUserResults.length > 0) {
-        db.end(); // Cierre de la conexión
         return res.status(409).json({
           error: "El usuario ya existe",
         });
@@ -68,13 +67,11 @@ app.post("/api/registro", async (req, res) => {
       db.query(insertUserQuery, [correo, hashedPassword, nombre, apellidos, tipo, direccion, celular, documento_identidad], (insertUserErr) => {
         if (insertUserErr) {
           console.error("Error al crear el usuario:", insertUserErr);
-          db.end(); // Cierre de la conexión
           return res.status(500).json({
             error: "Error al crear el usuario",
           });
         }
 
-        db.end(); // Cierre de la conexión
         res.status(200).json({
           message: "Usuario creado exitosamente",
         });
@@ -82,7 +79,6 @@ app.post("/api/registro", async (req, res) => {
     });
   } catch (err) {
     console.error("Error al crear el usuario:", err);
-    db.end(); // Cierre de la conexión
     return res.status(500).json({
       error: "Error al crear el usuario",
     });
@@ -94,10 +90,8 @@ app.get('/api/registro', (_req, res) => {
   db.query("SELECT * FROM cinema.usuarios", (err, result) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al obtener los registros' });
     } else {
-      db.end(); // Cierre de la conexión
       res.status(200).json(result);
     }
   });
@@ -112,16 +106,13 @@ app.post("/api/estrenos", async (req, res) => {
     db.query(query, [titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta], (err, results) => {
       if (err) {
         console.error("Error al insertar película:", err);
-        db.end(); // Cierre de la conexión
         res.status(500).json({ message: "Error interno del servidor" });
       } else {
-        db.end(); // Cierre de la conexión
         res.status(200).json({ message: "Película agregada correctamente" });
       }
     });
   } catch (err) {
     console.error("Error al insertar película:", err);
-    db.end(); // Cierre de la conexión
     res.status(500).json({ message: "Error interno del servidor" });
   }
 });
@@ -134,7 +125,6 @@ app.get('/api/estrenos/:id', (req, res) => {
   db.query(query, [peliculaId], (err, results) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al obtener los detalles de la película' });
     } else {
       if (results.length > 0) {
@@ -149,10 +139,8 @@ app.get('/api/estrenos/:id', (req, res) => {
           duracion: pelicula.duracion,
           valor_boleta: pelicula.valor_boleta,
         };
-        db.end(); // Cierre de la conexión
         res.status(200).json(movieDetails);
       } else {
-        db.end(); // Cierre de la conexión
         res.status(404).json({ message: 'No se encontró la película con el ID proporcionado' });
       }
     }
@@ -167,14 +155,11 @@ app.delete('/api/reservas/:id', (req, res) => {
   db.query(deleteQuery, [reservaId], (err, result) => {
     if (err) {
       console.error('Error al eliminar la reserva:', err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error interno del servidor' });
     } else {
       if (result.affectedRows > 0) {
-        db.end(); // Cierre de la conexión
         res.status(200).json({ message: 'Reserva eliminada correctamente' });
       } else {
-        db.end(); // Cierre de la conexión
         res.status(404).json({ message: 'Reserva no encontrada' });
       }
     }
@@ -196,12 +181,10 @@ app.put('/api/reservas/:id/eliminar-sillas', (req, res) => {
   db.query(getReservaQuery, [reservaId], (err, result) => {
     if (err) {
       console.error('Error al obtener la reserva:', err);
-      db.end(); // Cierre de la conexión
       return res.status(500).json({ message: 'Error interno del servidor' });
     }
 
     if (result.length === 0) {
-      db.end(); // Cierre de la conexión
       return res.status(404).json({ message: 'Reserva no encontrada' });
     }
 
@@ -215,14 +198,11 @@ app.put('/api/reservas/:id/eliminar-sillas', (req, res) => {
     db.query(updateQuery, [JSON.stringify(nuevosAsientos), reservaId], (updateErr, updateResult) => {
       if (updateErr) {
         console.error('Error al actualizar la reserva con nuevas sillas:', updateErr);
-        db.end(); // Cierre de la conexión
         res.status(500).json({ message: 'Error interno del servidor' });
       } else {
         if (updateResult.affectedRows > 0) {
-          db.end(); // Cierre de la conexión
           res.status(200).json({ message: 'Sillas eliminadas de la reserva correctamente' });
         } else {
-          db.end(); // Cierre de la conexión
           res.status(404).json({ message: 'Reserva no encontrada' });
         }
       }
@@ -237,7 +217,6 @@ app.get('/api/estrenos', (_req, res) => {
   db.query(query, (err, results) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al obtener los registros de películas' });
     } else {
       const movies = results.map((pelicula) => ({
@@ -251,7 +230,6 @@ app.get('/api/estrenos', (_req, res) => {
         valor_boleta: pelicula.valor_boleta,
       }));
 
-      db.end(); // Cierre de la conexión
       res.status(200).json(movies);
     }
   });
@@ -288,10 +266,8 @@ app.put('/api/estrenos/:id', (req, res) => {
   db.query(updateQuery, values, (err, result) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al editar la película' });
     } else {
-      db.end(); // Cierre de la conexión
       res.status(200).json({ message: 'Película editada correctamente' });
     }
   });
@@ -304,7 +280,6 @@ app.get('/api/registro/usuarios', (_req, res) => {
   db.query(query, (err, results) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al obtener los registros' });
     } else {
       const usuariosConTipo = results.map((usuario) => ({
@@ -318,7 +293,6 @@ app.get('/api/registro/usuarios', (_req, res) => {
         documento_identidad: usuario.documento_identidad
       }));
 
-      db.end(); // Cierre de la conexión
       res.status(200).json(usuariosConTipo);
     }
   });
@@ -334,7 +308,6 @@ app.post("/api/login", (req, res) => {
   db.query(query, [email], async (err, results) => {
     if (err) {
       console.error("Error al realizar la autenticación:", err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: "Error al realizar la autenticación" });
     } else {
       if (results.length > 0) {
@@ -352,10 +325,8 @@ app.post("/api/login", (req, res) => {
           db.query(insertTokenQuery, [refreshToken], (tokenErr) => {
             if (tokenErr) {
               console.error("Error al guardar el token de refresco:", tokenErr);
-              db.end(); // Cierre de la conexión
               res.status(500).json({ message: "Error interno del servidor" });
             } else {
-              db.end(); // Cierre de la conexión
               res.status(200).json({
                 message: "Inicio de sesión exitoso",
                 accessToken,
@@ -366,12 +337,10 @@ app.post("/api/login", (req, res) => {
           });
         } else {
           // Contraseña incorrecta
-          db.end(); // Cierre de la conexión
           res.status(401).json({ message: "Correo electrónico o contraseña incorrectos" });
         }
       } else {
         // Usuario no autenticado
-        db.end(); // Cierre de la conexión
         res.status(401).json({ message: "Correo electrónico o contraseña incorrectos" });
       }
     }
@@ -387,10 +356,8 @@ app.post('/api/reservar', async (req, res) => {
   db.query(insertQuery, [usuarioId, idPelicula, pelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al agregar la reserva' });
     } else {
-      db.end(); // Cierre de la conexión
       res.status(200).json({ message: 'Reserva agregada correctamente' });
     }
   });
@@ -405,10 +372,8 @@ app.get('/api/reservas', (req, res) => {
   db.query(query, [idPelicula, fecha, hora, sala], (err, result) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al obtener las reservas' });
     } else {
-      db.end(); // Cierre de la conexión
       res.status(200).json(result);
     }
   });
@@ -421,10 +386,8 @@ app.get('/api/listareservas', (req, res) => {
   db.query(query, (err, results) => {
     if (err) {
       console.error(err);
-      db.end(); // Cierre de la conexión
       res.status(500).json({ message: 'Error al obtener las reservas' });
     } else {
-      db.end(); // Cierre de la conexión
       res.status(200).json(results);
     }
   });
