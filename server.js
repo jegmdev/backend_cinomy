@@ -10,7 +10,7 @@ const { jsonResponse } = require('./lib/jsonResponse');
 const app = express();
 
 app.use(cors({
-  origin: 'https://trescoders.online',
+  origin: 'http://localhost:3000',
   credentials: true,
 }));
 
@@ -19,10 +19,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 const db = mysql.createConnection({
   host: process.env.HOST,
+  port: process.env.PORT,
   user: process.env.USER_DB,
   password: process.env.PASSWORD_DB,
   database: process.env.DATABASE,
-  connectionTimeout: 3600,
 });
 
 // Manejador de errores para la conexión a la base de datos
@@ -39,7 +39,7 @@ db.connect((err) => {
   console.log('Conexión establecida con la base de datos');
 });
 
-app.listen(() => {
+app.listen(3001, () => {
   console.log('Server is running');
 });
 
@@ -47,7 +47,7 @@ app.post("/api/registro", async (req, res) => {
   try {
     const { correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad } = req.body;
 
-    const checkUserQuery = "SELECT * FROM  cinema.usuarios WHERE correo = ?";
+    const checkUserQuery = "SELECT * FROM " + process.env.DATABASE + ".usuarios WHERE correo = ?";
     db.query(checkUserQuery, [correo], async (checkUserErr, checkUserResults) => {
       if (checkUserErr) {
         console.error("Error al verificar la existencia del usuario:", checkUserErr);
@@ -63,7 +63,7 @@ app.post("/api/registro", async (req, res) => {
       }
 
       const hashedPassword = await bcrypt.hash(contraseña, 10);
-      const insertUserQuery = "INSERT INTO cinema.usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+      const insertUserQuery = "INSERT INTO " + process.env.DATABASE + ".usuarios (correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
       db.query(insertUserQuery, [correo, hashedPassword, nombre, apellidos, tipo, direccion, celular, documento_identidad], (insertUserErr) => {
         if (insertUserErr) {
           console.error("Error al crear el usuario:", insertUserErr);
@@ -87,7 +87,7 @@ app.post("/api/registro", async (req, res) => {
 
 // Endpoint para obtener todos los registros de usuarios
 app.get('/api/registro', (_req, res) => {
-  db.query("SELECT * FROM cinema.usuarios", (err, result) => {
+  db.query("SELECT * FROM " + process.env.DATABASE + ".usuarios", (err, result) => {
     if (err) {
       console.error(err);
       res.status(500).json({ message: 'Error al obtener los registros' });
@@ -101,7 +101,7 @@ app.get('/api/registro', (_req, res) => {
 app.post("/api/estrenos", async (req, res) => {
   try {
     const { titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta } = req.body;
-    const query = "INSERT INTO cinema.estrenos (titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    const query = "INSERT INTO " + process.env.DATABASE + ".estrenos (titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
     db.query(query, [titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta], (err, results) => {
       if (err) {
@@ -120,7 +120,7 @@ app.post("/api/estrenos", async (req, res) => {
 // Endpoint para obtener detalles de una película
 app.get('/api/estrenos/:id', (req, res) => {
   const peliculaId = req.params.id;
-  const query = "SELECT * FROM cinema.estrenos WHERE id = ?";
+  const query = "SELECT * FROM " + process.env.DATABASE + ".estrenos WHERE id = ?";
 
   db.query(query, [peliculaId], (err, results) => {
     if (err) {
@@ -150,7 +150,7 @@ app.get('/api/estrenos/:id', (req, res) => {
 // Endpoint para eliminar reservas
 app.delete('/api/reservas/:id', (req, res) => {
   const reservaId = req.params.id;
-  const deleteQuery = "DELETE FROM cinema.reservas WHERE id = ?";
+  const deleteQuery = "DELETE FROM " + process.env.DATABASE + ".reservas WHERE id = ?";
 
   db.query(deleteQuery, [reservaId], (err, result) => {
     if (err) {
@@ -176,7 +176,7 @@ app.put('/api/reservas/:id/eliminar-sillas', (req, res) => {
     return res.status(400).json({ message: 'La solicitud debe incluir un array válido de sillas a eliminar' });
   }
 
-  const getReservaQuery = "SELECT asientos FROM cinema.reservas WHERE id = ?";
+  const getReservaQuery = "SELECT asientos FROM " + process.env.DATABASE + ".reservas WHERE id = ?";
 
   db.query(getReservaQuery, [reservaId], (err, result) => {
     if (err) {
@@ -193,7 +193,7 @@ app.put('/api/reservas/:id/eliminar-sillas', (req, res) => {
 
     const nuevosAsientos = asientosActuales.filter((asiento) => !sillasAEliminar.includes(asiento));
 
-    const updateQuery = "UPDATE cinema.reservas SET asientos = ? WHERE id = ?";
+    const updateQuery = "UPDATE " + process.env.DATABASE + ".reservas SET asientos = ? WHERE id = ?";
 
     db.query(updateQuery, [JSON.stringify(nuevosAsientos), reservaId], (updateErr, updateResult) => {
       if (updateErr) {
@@ -212,7 +212,7 @@ app.put('/api/reservas/:id/eliminar-sillas', (req, res) => {
 
 // Endpoint para obtener todos los estrenos
 app.get('/api/estrenos', (_req, res) => {
-  const query = "SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM cinema.estrenos";
+  const query = "SELECT id, titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta FROM " + process.env.DATABASE + ".estrenos";
 
   db.query(query, (err, results) => {
     if (err) {
@@ -241,7 +241,7 @@ app.put('/api/estrenos/:id', (req, res) => {
   const { titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta } = req.body;
 
   const updateQuery = `
-    UPDATE  cinema.estrenos
+    UPDATE  " + process.env.DATABASE + ".estrenos
     SET
       titulo = ?,
       genero = ?,
@@ -275,7 +275,7 @@ app.put('/api/estrenos/:id', (req, res) => {
 
 // Endpoint para obtener todos los usuarios registrados
 app.get('/api/registro/usuarios', (_req, res) => {
-  const query = "SELECT id, correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad FROM cinema.usuarios";
+  const query = "SELECT id, correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad FROM " + process.env.DATABASE + ".usuarios";
 
   db.query(query, (err, results) => {
     if (err) {
@@ -303,7 +303,7 @@ app.post("/api/login", (req, res) => {
   const { email, password } = req.body;
 
   // Validar si el usuario está registrado
-  const query = "SELECT * FROM cinema.usuarios WHERE correo = ?";
+  const query = "SELECT * FROM " + process.env.DATABASE + ".usuarios WHERE correo = ?";
 
   db.query(query, [email], async (err, results) => {
     if (err) {
@@ -321,7 +321,7 @@ app.post("/api/login", (req, res) => {
           const refreshToken = await generateRefreshToken(getUserInfo(user));
 
           // Guardar el token de actualización en la base de datos
-          const insertTokenQuery = "INSERT INTO cinema.tokens (token) VALUES (?)";
+          const insertTokenQuery = "INSERT INTO " + process.env.DATABASE + ".tokens (token) VALUES (?)";
           db.query(insertTokenQuery, [refreshToken], (tokenErr) => {
             if (tokenErr) {
               console.error("Error al guardar el token de refresco:", tokenErr);
@@ -351,7 +351,7 @@ app.post("/api/login", (req, res) => {
 app.post('/api/reservar', async (req, res) => {
   const { usuarioId, idPelicula, pelicula, fecha, hora, sala, asientos, total } = req.body;
 
-  const insertQuery = "INSERT INTO cinema.reservas (usuarioId, peliculaId, pelicula, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+  const insertQuery = "INSERT INTO " + process.env.DATABASE + ".reservas (usuarioId, peliculaId, pelicula, fecha, hora, sala, asientos, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
   db.query(insertQuery, [usuarioId, idPelicula, pelicula, fecha, hora, sala, JSON.stringify(asientos), total], (err, result) => {
     if (err) {
@@ -367,7 +367,7 @@ app.post('/api/reservar', async (req, res) => {
 app.get('/api/reservas', (req, res) => {
   const { idPelicula, fecha, hora, sala } = req.query;
 
-  const query = "SELECT * FROM cinema.reservas WHERE peliculaId = ? AND fecha = ? AND hora = ? AND sala = ?";
+  const query = "SELECT * FROM " + process.env.DATABASE + ".reservas WHERE peliculaId = ? AND fecha = ? AND hora = ? AND sala = ?";
 
   db.query(query, [idPelicula, fecha, hora, sala], (err, result) => {
     if (err) {
@@ -381,7 +381,7 @@ app.get('/api/reservas', (req, res) => {
 
 // Endpoint para obtener todas las reservas
 app.get('/api/listareservas', (req, res) => {
-  const query = "SELECT * FROM cinema.reservas";
+  const query = "SELECT * FROM " + process.env.DATABASE + ".reservas";
 
   db.query(query, (err, results) => {
     if (err) {
