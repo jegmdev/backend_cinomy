@@ -9,8 +9,10 @@ const { jsonResponse } = require('./lib/jsonResponse');
 
 const app = express();
 
+const allowedOrigins = ['https://trescoders.online', 'http://localhost:3000'];
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true,
 }));
 
