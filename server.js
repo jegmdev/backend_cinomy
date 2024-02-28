@@ -23,6 +23,7 @@ const db = mysql.createConnection({
   user: process.env.USER_DB,
   password: process.env.PASSWORD_DB,
   database: process.env.DATABASE,
+  connectTimeout: 3600000, // Tiempo de espera en milisegundos (3600 segundos)
 });
 
 // Manejador de errores para la conexión a la base de datos
