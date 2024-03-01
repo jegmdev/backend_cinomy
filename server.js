@@ -240,7 +240,7 @@ app.get('/api/estrenos', (_req, res) => {
 
 // Endpoint para editar un estreno
 app.put('/api/estrenos/:id', (req, res) => {
-  const { id } = req.params;
+  const { editingMovieId } = req.params;
   const { titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta } = req.body;
 
   const updateQuery = `
@@ -253,7 +253,7 @@ app.put('/api/estrenos/:id', (req, res) => {
       formato = ?,
       duracion = ?,
       valor_boleta = ?
-    WHERE id = ?`;
+    WHERE editingMovieId = ?`;
 
   const values = [
     titulo,
@@ -263,7 +263,7 @@ app.put('/api/estrenos/:id', (req, res) => {
     formato,
     duracion,
     valor_boleta,
-    id,
+    editingMovieId,
   ];
 
   db.query(updateQuery, values, (err, result) => {
