@@ -239,7 +239,7 @@ app.get('/api/estrenos', (_req, res) => {
 });
 
 // Endpoint para editar un estreno
-app.put('/api/estrenos/:id', (req, res) => {
+app.put('/api/estrenos/:editingMovieId', (req, res) => {
   const { editingMovieId } = req.params;
   const { titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta } = req.body;
 
