@@ -276,6 +276,27 @@ app.put('/api/estrenos/:id', (req, res) => {
   });
 });
 
+// Endpoint para eliminar estrenos
+app.delete('/api/estrenos/:id', (req, res) => {
+  const peliculaId = req.params.id;
+
+  const deleteQuery = "DELETE FROM " + process.env.DATABASE + ".estrenos WHERE id = ?";
+
+  db.query(deleteQuery, [peliculaId], (err, result) => {
+    if (err) {
+      console.error('Error al eliminar el estreno:', err);
+      res.status(500).json({ message: 'Error interno del servidor' });
+    } else {
+      if (result.affectedRows > 0) {
+        res.status(200).json({ message: 'Estreno eliminado correctamente' });
+      } else {
+        res.status(404).json({ message: 'Estreno no encontrado' });
+      }
+    }
+  });
+});
+
+
 // Endpoint para obtener todos los usuarios registrados
 app.get('/api/registro/usuarios', (_req, res) => {
   const query = "SELECT id, correo, contraseña, nombre, apellidos, tipo, direccion, celular, documento_identidad FROM " + process.env.DATABASE + ".usuarios";
