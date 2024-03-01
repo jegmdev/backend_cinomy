@@ -238,13 +238,13 @@ app.get('/api/estrenos', (_req, res) => {
   });
 });
 
-// Endpoint para editar un estreno
-app.put('/api/estrenos/:editingMovieId', (req, res) => {
-  const { editingMovieId } = req.params;
+// Endpoint para actualizar un recurso utilizando POST
+app.post('/api/estrenos/:id', (req, res) => {
+  const { id } = req.params;
   const { titulo, genero, sinopsis, imagen_promocional, formato, duracion, valor_boleta } = req.body;
 
   const updateQuery = `
-    UPDATE  " + process.env.DATABASE + ".estrenos
+    UPDATE ${process.env.DATABASE}.estrenos
     SET
       titulo = ?,
       genero = ?,
@@ -253,7 +253,7 @@ app.put('/api/estrenos/:editingMovieId', (req, res) => {
       formato = ?,
       duracion = ?,
       valor_boleta = ?
-    WHERE editingMovieId = ?`;
+    WHERE id = ?`;
 
   const values = [
     titulo,
@@ -263,18 +263,19 @@ app.put('/api/estrenos/:editingMovieId', (req, res) => {
     formato,
     duracion,
     valor_boleta,
-    editingMovieId,
+    id,
   ];
 
   db.query(updateQuery, values, (err, result) => {
     if (err) {
       console.error(err);
-      res.status(500).json({ message: 'Error al editar la película' });
+      res.status(500).json({ message: 'Error al actualizar la película' });
     } else {
-      res.status(200).json({ message: 'Película editada correctamente' });
+      res.status(200).json({ message: 'Película actualizada correctamente' });
     }
   });
 });
+
 
 // Endpoint para eliminar estrenos
 app.delete('/api/estrenos/:id', (req, res) => {
